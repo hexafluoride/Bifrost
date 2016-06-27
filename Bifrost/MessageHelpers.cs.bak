@@ -1,0 +1,17 @@
+﻿using System;
+
+namespace Bifrost
+{
+    public static class MessageHelpers
+    {
+        public static Message CreateDataMessage(byte[] data)
+        {
+            Message msg = new Message(MessageType.Data, 0x00);
+
+            msg.Store["data"] = data;
+
+            return msg;
+        }
+    }
+}
+

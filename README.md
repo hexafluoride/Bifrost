@@ -22,7 +22,7 @@ Bifrost mostly depends on the excellent [BouncyCastle](http://bouncycastle.org/)
 Since Bifrost is designed to be simple, it has its own PKI designed around PEM keypairs and raw signature files.
 
 ## Message format
-Read more about Bifrost's message format in the [wiki](https://github.com/hexafluoride/Bifrost/wiki)(WIP).
+Read more about Bifrost's message format in the [wiki](https://github.com/hexafluoride/Bifrost/wiki/Message-format).
 
 ## Simple example
 Server side:

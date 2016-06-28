@@ -63,9 +63,29 @@ namespace Bifrost
             byte[] shared_salt = msg.Store["shared_salt"];
             byte[] salt_signature = msg.Store["shared_salt_signature"];
 
+            byte[] timestamp = msg.Store["timestamp"];
+            DateTime timestamp_dt = MessageHelpers.GetDateTime(BitConverter.ToInt64(timestamp, 0));
+            TimeSpan difference = (DateTime.UtcNow - timestamp_dt).Duration();
+
+            if(!timestamp.SequenceEqual(ecdh_public_key.Skip(ecdh_public_key.Length - 8)))
+            {
+                Log.Error("Timestamp mismatch between ECDH public key and explicit timestamp. Terminating handshake.");
+                Tunnel.Close();
+                return false;
+            }
+
+            if(difference > MaximumTimeMismatch)
+            {
+                Log.Error("Timestamp difference between client and server exceeds allowed window of {0}(provided timestamp is {1}, our clock is {2}). Terminating handshake.", MaximumTimeMismatch, timestamp_dt, DateTime.UtcNow);
+                Tunnel.Close();
+                return false;
+            }
+
+            Log.Info("Clock drift between peers is {0}.", difference);
+
             if (!RsaHelpers.VerifyData(rsa_public_key, rsa_signature, CertificateAuthority))
             {
-                Log.Error("Failed to verify RSA public key against certificate authority. Terminating handshake.", msg.Type, msg.Subtype);
+                Log.Error("Failed to verify RSA public key against certificate authority. Terminating handshake.");
                 Tunnel.Close();
                 return false;
             }
@@ -74,20 +94,12 @@ namespace Bifrost
 
             if (!RsaHelpers.VerifyData(ecdh_public_key, ecdh_signature, parameters))
             {
-                Log.Error("Failed to verify ECDH public key authenticity. Terminating handshake.", msg.Type, msg.Subtype);
-                Tunnel.Close();
-                return false;
-            }
-
-            if (!RsaHelpers.VerifyData(shared_salt, salt_signature, parameters))
-            {
-                Log.Error("Failed to verify shared salt authenticity. Terminating handshake.", msg.Type, msg.Subtype);
+                Log.Error("Failed to verify ECDH public key authenticity. Terminating handshake.");
                 Tunnel.Close();
                 return false;
             }
 
             SharedSalt = shared_salt;
-
             PemReader pem = new PemReader(new StringReader(Encoding.UTF8.GetString(ecdh_public_key)));
 
             ECPublicKeyParameters peer_ecdh_pk = (ECPublicKeyParameters)pem.ReadObject();

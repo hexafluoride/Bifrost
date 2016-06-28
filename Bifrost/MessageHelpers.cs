@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using System.Linq;
 
 using System.Security.Cryptography;
 
@@ -36,7 +37,10 @@ namespace Bifrost
         {
             Message msg = new Message(MessageType.AuthRequest, 0x00);
 
-            msg.Store["ecdh_public_key"] = Encoding.UTF8.GetBytes(link.ExportECDHPublicKey());
+            byte[] timestamp = GetTimestamp();
+
+            msg.Store["ecdh_public_key"] = Encoding.UTF8.GetBytes(link.ExportECDHPublicKey()).Concat(timestamp).ToArray();
+            msg.Store["timestamp"] = timestamp;
 
             if (link.AuthenticateSelf)
             {
@@ -63,15 +67,30 @@ namespace Bifrost
         { 
             Message msg = new Message(MessageType.AuthResponse, 0x00);
 
+            byte[] timestamp = GetTimestamp();
+
             msg.Store["rsa_public_key"] = Encoding.UTF8.GetBytes(RsaHelpers.PemSerialize(link.Certificate.Public));
             msg.Store["rsa_signature"] = link.Signature;
-            msg.Store["ecdh_public_key"] = Encoding.UTF8.GetBytes(link.ExportECDHPublicKey());
+            msg.Store["ecdh_public_key"] = Encoding.UTF8.GetBytes(link.ExportECDHPublicKey()).Concat(timestamp).ToArray();
             msg.Store["ecdh_signature"] = RsaHelpers.SignData(msg.Store["ecdh_public_key"], link.Certificate);
 
             msg.Store["shared_salt"] = link.SharedSalt;
             msg.Store["shared_salt_signature"] = RsaHelpers.SignData(link.SharedSalt, link.Certificate);
 
+            msg.Store["timestamp"] = timestamp;
+
             return msg;
+        }
+
+        static DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        public static byte[] GetTimestamp()
+        {
+            return BitConverter.GetBytes((long)(DateTime.UtcNow - Epoch).TotalMilliseconds);
+        }
+        public static DateTime GetDateTime(long timestamp)
+        {
+            return Epoch.AddMilliseconds(timestamp);
         }
     }
 }

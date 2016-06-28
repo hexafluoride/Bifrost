@@ -54,6 +54,8 @@ namespace Bifrost
         public bool BufferedWrite = false;
         public bool Dead = false;
 
+        public TimeSpan MaximumTimeMismatch = new TimeSpan(0, 5, 0);
+
         public SizeQueue<Message> SendQueue = new SizeQueue<Message>(1500);
             
         public RNGCryptoServiceProvider RNG = new RNGCryptoServiceProvider();

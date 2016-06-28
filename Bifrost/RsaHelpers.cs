@@ -25,7 +25,7 @@ namespace Bifrost
             PemWriter pem = new PemWriter(sw);
 
             pem.WriteObject(obj);
-            return sw.ToString();
+            return sw.ToString().Replace("\r", "");
         }
 
         /// <summary>

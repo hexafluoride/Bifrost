@@ -13,7 +13,7 @@ Bifrost mostly depends on the excellent [BouncyCastle](http://bouncycastle.org/)
 |Function|Primitive|
 |---|---|
 |Authentication|RSA-2048|
-|Signatures|RSA-2048 with SHA256|
+|Signatures|RSA-2048 with SHA-256|
 |Encryption|AES-256 in GCM|
 |Key stretching|HKDF with SHA-512|
 |Key exchange|ECDHE with the P-521 curve|

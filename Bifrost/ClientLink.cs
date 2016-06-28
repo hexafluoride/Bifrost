@@ -25,9 +25,10 @@ namespace Bifrost
         /// <param name="tunnel">The ITunnel to use.</param>
         /// <param name="auth_self">If auth_self is set to true, the loaded RSA keys are used to authenticate ourselves to the server. 
         /// If auth_client is set to true on the server, auth_self must also be true, otherwise the handshake will fail.</param>
-        public ClientLink(ITunnel tunnel, bool auth_self)
+        public ClientLink(ITunnel tunnel, bool auth_self = true)
         {
             Tunnel = tunnel;
+            AuthenticateSelf = auth_self;
         }
 
         /// <summary>

@@ -19,7 +19,7 @@ Bifrost mostly depends on the excellent [BouncyCastle](http://bouncycastle.org/)
 |Key exchange|ECDHE with the P-521 curve|
 
 ## Public key infrastructure
-Since Bifrost is designed to be simple, it has its own PKI designed around PEM keypairs and raw signature files.
+Since Bifrost is designed to be simple, it has its own PKI designed around PEM keypairs and raw signature files. You can use [CertManager](https://github.com/hexafluoride/Bifrost/tree/master/CertManager) to create CAs or keypairs.
 
 ## Message format
 Read more about Bifrost's message format in the [wiki](https://github.com/hexafluoride/Bifrost/wiki/Message-format).

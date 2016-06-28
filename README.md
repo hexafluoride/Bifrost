@@ -45,7 +45,7 @@ if(!link.PerformHandshake())
 link.OnDataReceived += (l, data) =>
 {
   Console.WriteLine("Received {0} bytes from client: {1}", data.Length, Encoding.UTF8.GetString(data));
-  l.Send(data);
+  l.SendData(data);
 };
 
 link.StartThreads();
@@ -72,7 +72,7 @@ link.OnDataReceived += (l, data) =>
 };
 
 link.StartThreads();
-link.Send(Encoding.UTF8.GetBytes("Hello World!"));
+link.SendData(Encoding.UTF8.GetBytes("Hello World!"));
 
 Console.ReadLine();
 ```

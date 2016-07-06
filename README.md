@@ -1,4 +1,4 @@
-# Bifrost
+# Bifrost [![Build status](https://ci.appveyor.com/api/projects/status/7fr863kn1dbihtmg/branch/master?svg=true)](https://ci.appveyor.com/project/hexafluoride/bifrost/branch/master)
 Lightweight experimental cryptoprotocol :lock: :key:
 
 ## Disclaimer

@@ -44,12 +44,12 @@
     <Reference Include="BouncyCastle.Crypto">
       <HintPath>..\packages\BouncyCastle.Crypto.dll.1.8.1\lib\BouncyCastle.Crypto.dll</HintPath>
     </Reference>
+    <Reference Include="Bifrost" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Options.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RsaHelpers.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

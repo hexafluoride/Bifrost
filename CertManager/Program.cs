@@ -51,7 +51,7 @@ namespace CertManager
             }
             AsymmetricCipherKeyPair Pair = null;
 
-            if (action == "generate-key" || action == "sign-key")
+            if (action == "sign-key")
             {
                 if (!File.Exists(ca_path))
                 {
@@ -72,7 +72,7 @@ namespace CertManager
 
                 if (pair is AsymmetricKeyParameter)
                 {
-                    Console.WriteLine("The certificate authority file you have specified only contains the public key. When using generate-key or sign-key, you have to use the .privkey file, not the .ca file.");
+                    Console.WriteLine("The certificate authority file you have specified only contains the public key. When using sign-key, you have to use the .privkey file, not the .ca file.");
                     Console.WriteLine("Exiting.");
                     return;
                 }
@@ -104,18 +104,21 @@ namespace CertManager
                         string pub = RsaHelpers.PemSerialize(pair.Public);
                         string priv = RsaHelpers.PemSerialize(pair);
 
-                        Console.WriteLine("Signing keypair...");
-                        var signature = RsaHelpers.SignData(Encoding.UTF8.GetBytes(pub), Pair);
-
-                        Console.WriteLine("Saving keypair and signature...");
+                        Console.WriteLine("Saving keypair...");
                         WriteFile(string.Format("{0}.privkey", key_name), priv);
                         WriteFile(string.Format("{0}.pub", key_name), pub);
-                        WriteFile(string.Format("{0}.sign", key_name), signature);
 
-                        Console.WriteLine("Verifying signature...");
+                        if (Pair != null)
+                        {
+                            Console.WriteLine("Signing keypair...");
+                            var signature = RsaHelpers.SignData(Encoding.UTF8.GetBytes(pub), Pair);
+                            WriteFile(string.Format("{0}.sign", key_name), signature);
 
-                        if (!RsaHelpers.VerifyData(Encoding.UTF8.GetBytes(pub), signature, Pair))
-                            Console.WriteLine("Failed!");
+                            Console.WriteLine("Verifying signature...");
+
+                            if (!RsaHelpers.VerifyData(Encoding.UTF8.GetBytes(pub), signature, Pair))
+                                Console.WriteLine("Failed!");
+                        }
                         break;
                     }
                 case "sign-key":

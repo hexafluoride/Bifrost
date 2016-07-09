@@ -34,7 +34,7 @@ namespace CertManager
             };
             set.Parse(args);
 
-            if (string.IsNullOrWhiteSpace(ca_path) && (action == "generate-ca" || action == "generate-key" || action == "sign-key"))
+            if (string.IsNullOrWhiteSpace(ca_path) && (action == "generate-ca" || action == "sign-key"))
             {
                 Console.WriteLine("You have to specify a valid filename using --ca when using {0}!", action);
                 Console.WriteLine("Try certmanager --help for more info.");

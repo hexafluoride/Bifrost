@@ -24,6 +24,8 @@ namespace CertManager
             string ca_path = "";
             string key_name = "";
 
+            Utilities.LogVersion();
+
             OptionSet set = new OptionSet();
             set = new OptionSet()
             {

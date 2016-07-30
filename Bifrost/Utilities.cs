@@ -28,6 +28,15 @@ namespace Bifrost
         /// </summary>
         public static void LogVersion()
         {
+            Log.Info("Bifrost version {0}", GetVersion());
+        }
+
+        /// <summary>
+        /// Returns the Bifrost version as patched by AppVeyor.
+        /// </summary>
+        /// <returns>The Bifrost build version.</returns>
+        public static string GetVersion()
+        {
             string version = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).ProductVersion;
 
             // truncate git hash to 8 chars for readability
@@ -44,7 +53,7 @@ namespace Bifrost
             if (parts.Length <= 1)
                 version += " (unrecognized version, not an AppVeyor build)";
 
-            Log.Info("Bifrost version {0}", version);
+            return version;
         }
     }
 }

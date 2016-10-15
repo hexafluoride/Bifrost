@@ -33,14 +33,14 @@ namespace Bifrost
         /// <summary>
         /// Perform a server-side handshake.
         /// </summary>
-        /// <returns>true if the handshake was successful, false otherwise.</returns>
+        /// <returns>A HandshakeResult class containing information about the handshake attempt.</returns>
         public HandshakeResult PerformHandshake()
         {
             Message msg = Receive();
 
             if (msg == null)
             {
-                var result = new HandshakeResult(HandshakeResultType.ConnectionClosed, "Connection closed?");
+                var result = new HandshakeResult(HandshakeResultType.ConnectionClosed, "Connection closed.");
                 Log.Error(result.Message);
                 Tunnel.Close();
                 return result;
@@ -127,6 +127,7 @@ namespace Bifrost
             StartThreads();
 
             var result_final = new HandshakeResult(HandshakeResultType.Successful, "Handshake successful.");
+            result_final.TimeDrift = difference.TotalSeconds;
             Log.Info(result_final.Message);
             return result_final;
         }

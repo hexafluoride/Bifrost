@@ -34,22 +34,24 @@ namespace Bifrost
         /// Perform a server-side handshake.
         /// </summary>
         /// <returns>true if the handshake was successful, false otherwise.</returns>
-        public bool PerformHandshake()
+        public HandshakeResult PerformHandshake()
         {
             Message msg = Receive();
 
             if (msg == null)
             {
-                Log.Error("Connection closed?");
+                var result = new HandshakeResult(HandshakeResultType.ConnectionClosed, "Connection closed?");
+                Log.Error(result.Message);
                 Tunnel.Close();
-                return false;
+                return result;
             }
 
             if (!msg.CheckType(MessageType.AuthRequest, 0x00))
             {
-                Log.Error("Received message of type {0}/0x{1:X} while expecting AuthRequest/0x00. Terminating handshake.", msg.Type, msg.Subtype);
+                var result = new HandshakeResult(HandshakeResultType.UnexpectedMessage, "Received message of type {0}/0x{1:X} while expecting AuthRequest/0x00. Terminating handshake.", msg.Type, msg.Subtype);
+                Log.Error(result.Message);
                 Tunnel.Close();
-                return false;
+                return result;
             }
 
             byte[] rsa_public_key = msg.Store["rsa_public_key"];
@@ -63,34 +65,38 @@ namespace Bifrost
 
             if (!timestamp.SequenceEqual(ecdh_public_key.Skip(ecdh_public_key.Length - 8)))
             {
-                Log.Error("Timestamp mismatch between ECDH public key and explicit timestamp. Terminating handshake.");
+                var result = new HandshakeResult(HandshakeResultType.UntrustedTimestamp, "Timestamp mismatch between ECDH public key and explicit timestamp. Terminating handshake.");
+                Log.Error(result.Message);
                 Tunnel.Close();
-                return false;
+                return result;
             }
 
             if (difference > MaximumTimeMismatch)
             {
-                Log.Error("Timestamp difference between client and server exceeds allowed window of {0}(provided timestamp is {1}, our clock is {2}). Terminating handshake.", MaximumTimeMismatch, timestamp_dt, DateTime.UtcNow);
+                var result = new HandshakeResult(HandshakeResultType.ReplayAttack, "Timestamp difference between client and server exceeds allowed window of {0}(provided timestamp is {1}, our clock is {2}). Terminating handshake.", MaximumTimeMismatch, timestamp_dt, DateTime.UtcNow);
+                Log.Error(result.Message);
                 Tunnel.Close();
-                return false;
+                return result;
             }
 
             Log.Info("Clock drift between peers is {0}.", difference);
 
             if (!AuthenticateClient && !RsaHelpers.VerifyData(rsa_public_key, rsa_signature, CertificateAuthority))
             {
-                Log.Error("Failed to verify RSA public key against certificate authority. Terminating handshake.");
+                var result = new HandshakeResult(HandshakeResultType.UntrustedStaticPublicKey, "Failed to verify RSA public key against certificate authority. Terminating handshake.");
+                Log.Error(result.Message);
                 Tunnel.Close();
-                return false;
+                return result;
             }
 
             var parameters = (RsaKeyParameters)RsaHelpers.PemDeserialize(Encoding.UTF8.GetString(rsa_public_key));
 
             if (AuthenticateClient && !RsaHelpers.VerifyData(ecdh_public_key, ecdh_signature, parameters))
             {
-                Log.Error("Failed to verify ECDH public key authenticity. Terminating handshake.");
+                var result = new HandshakeResult(HandshakeResultType.UntrustedEphemeralPublicKey, "Failed to verify ECDH public key authenticity. Terminating handshake.");
+                Log.Error(result.Message);
                 Tunnel.Close();
-                return false;
+                return result;
             }
 
             PemReader pem = new PemReader(new StringReader(Encoding.UTF8.GetString(ecdh_public_key)));
@@ -118,8 +124,11 @@ namespace Bifrost
 
             CurrentEncryption = EncryptionMode.AES;
 
-            Log.Info("Handshake successful.");
-            return true;
+            StartThreads();
+
+            var result_final = new HandshakeResult(HandshakeResultType.Successful, "Handshake successful.");
+            Log.Info(result_final.Message);
+            return result_final;
         }
     }
 }

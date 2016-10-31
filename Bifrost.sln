@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bifrost", "Bifrost\Bifrost.csproj", "{DCC40958-78E2-4A21-B8C8-B2911BC357A4}"
 EndProject
@@ -9,16 +9,26 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CertManager", "CertManager\
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug_Ubuntu|Any CPU = Debug_Ubuntu|Any CPU
 		Debug|Any CPU = Debug|Any CPU
+		Release_Ubuntu|Any CPU = Release_Ubuntu|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DCC40958-78E2-4A21-B8C8-B2911BC357A4}.Debug_Ubuntu|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCC40958-78E2-4A21-B8C8-B2911BC357A4}.Debug_Ubuntu|Any CPU.Build.0 = Debug|Any CPU
 		{DCC40958-78E2-4A21-B8C8-B2911BC357A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{DCC40958-78E2-4A21-B8C8-B2911BC357A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCC40958-78E2-4A21-B8C8-B2911BC357A4}.Release_Ubuntu|Any CPU.ActiveCfg = Release|Any CPU
+		{DCC40958-78E2-4A21-B8C8-B2911BC357A4}.Release_Ubuntu|Any CPU.Build.0 = Release|Any CPU
 		{DCC40958-78E2-4A21-B8C8-B2911BC357A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DCC40958-78E2-4A21-B8C8-B2911BC357A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5794D5A-3A01-4B9E-9766-F43EA95FEA8A}.Debug_Ubuntu|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5794D5A-3A01-4B9E-9766-F43EA95FEA8A}.Debug_Ubuntu|Any CPU.Build.0 = Debug|Any CPU
 		{F5794D5A-3A01-4B9E-9766-F43EA95FEA8A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F5794D5A-3A01-4B9E-9766-F43EA95FEA8A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5794D5A-3A01-4B9E-9766-F43EA95FEA8A}.Release_Ubuntu|Any CPU.ActiveCfg = Release|Any CPU
+		{F5794D5A-3A01-4B9E-9766-F43EA95FEA8A}.Release_Ubuntu|Any CPU.Build.0 = Release|Any CPU
 		{F5794D5A-3A01-4B9E-9766-F43EA95FEA8A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F5794D5A-3A01-4B9E-9766-F43EA95FEA8A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection

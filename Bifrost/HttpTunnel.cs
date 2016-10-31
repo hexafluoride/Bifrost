@@ -84,6 +84,8 @@ namespace Bifrost
             if (compression)
                 throw new Exception("Compression is not supported yet.");
 
+            socket.Client.NoDelay = true;
+
             Connection = socket;
             ServerSide = server;
             Compression = compression;

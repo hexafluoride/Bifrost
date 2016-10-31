@@ -220,19 +220,10 @@ namespace Bifrost
                 {
                     if (msg.Type == MessageType.Data)
                     {
-                        byte[] checksum = md5.ComputeHash(msg.Store["data"]);
-
-                        if (!msg.Store["checksum"].SequenceEqual(checksum))
-                        {
-                            Log.Warn("Expected {0}, got {1} and {2}", BitConverter.ToString(msg.Store["checksum"]).ToLower(), BitConverter.ToString(md5.ComputeHash(msg.Store["data"])).ToLower(), BitConverter.ToString(checksum).ToLower());
-                            continue;
-                        }
-
-                        Utilities.StartThread(delegate
-                        {
-                            if (OnDataReceived != null)
-                                OnDataReceived(this, msg.Store["data"]);
-                        });
+                        Tunnel.DataBytesReceived += msg.Store["data"].Length;
+                        
+                        if (OnDataReceived != null)
+                            OnDataReceived(this, msg.Store["data"]);
                     }
                 }
             }

@@ -20,10 +20,10 @@ namespace Bifrost
             Message msg = new Message(MessageType.Data, 0x00);
 
             msg.Store["data"] = data;
-            lock (MD5)
-            {
-                msg.Store["checksum"] = MD5.ComputeHash(data);
-            }
+            //lock (MD5)
+            //{
+            //    msg.Store["checksum"] = MD5.ComputeHash(data);
+            //}
 
             return msg;
         }

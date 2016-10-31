@@ -44,7 +44,6 @@
     <Reference Include="BouncyCastle.Crypto">
       <HintPath>..\packages\BouncyCastle.Crypto.dll.1.8.1\lib\BouncyCastle.Crypto.dll</HintPath>
     </Reference>
-    <Reference Include="Bifrost" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Options.cs" />
@@ -56,6 +55,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Bifrost\Bifrost.csproj">
+      <Project>{dcc40958-78e2-4a21-b8c8-b2911bc357a4}</Project>
+      <Name>Bifrost</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Bifrost\Bifrost.csproj">
       <Project>{dcc40958-78e2-4a21-b8c8-b2911bc357a4}</Project>
       <Name>Bifrost</Name>

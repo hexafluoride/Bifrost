@@ -28,7 +28,27 @@ namespace Bifrost
             return BitConverter.ToInt32(buf, 0);
         }
 
-        public static byte[] ReadSafe(this Stream stream, uint len)
+        public static byte[] ReadShort(this Stream stream, uint len, bool reverse = false)
+        {
+            byte[] buf = new byte[len];
+
+            for (int i = 0; i < len; i++)
+            {
+                int b = stream.ReadByte();
+
+                while (b == -1)
+                    b = stream.ReadByte();
+
+                buf[i] = (byte)b;
+            }
+
+            if (reverse)
+                buf = buf.Reverse().ToArray();
+
+            return buf;
+        }
+
+        public static byte[] ReadSafe(this Stream stream, uint len, bool reverse = false)
         {
             byte[] buf = new byte[len];
             int index = 0;
@@ -38,12 +58,15 @@ namespace Bifrost
                 int read = stream.Read(buf, index, buf.Length - index);
                 index += read;
 
-                if (index >= (len - 1))
+                if (index >= (len))
                     break;
 
                 if (read == -1)
                     break;
             }
+
+            if (reverse)
+                buf = buf.Reverse().ToArray();
 
             return buf;
         }
@@ -76,7 +99,12 @@ namespace Bifrost
                 throw new Exception("Connection closed");
             }
 
-            return sb.ToString();
+            string ret = sb.ToString();
+
+            if (ret.EndsWith("\r"))
+                ret = ret.Substring(0, ret.Length - 1);
+
+            return ret;
         }
 
         public static byte[] ReadToEnd(this Stream stream)

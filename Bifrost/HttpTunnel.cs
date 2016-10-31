@@ -162,7 +162,7 @@ namespace Bifrost
 
                     if (counter > 15)
                     {
-                        Log.Info("Recovering from desynchronized stream...");
+                        Log.Warn("Recovering from desynchronized stream...");
                         return new byte[0];
                     }
                 }
@@ -182,26 +182,26 @@ namespace Bifrost
                 {
                     try
                     {
-                    int read = NetworkStream.Read(buf, index, length - index);
-                    index += read;
+                        int read = NetworkStream.Read(buf, index, length - index);
+                        index += read;
 
-                    counter++;
+                        counter++;
 
-                    if (counter > 20)
-                    {
-                        Log.Info("Recovering from desynchronized stream...");
-                        return new byte[0];
-                    }
+                        if (counter > 20)
+                        {
+                            Log.Warn("Recovering from desynchronized stream...");
+                            return new byte[0];
+                        }
                     }
                     catch (IOException ex)
                     {
-                        Log.Warn("Read timeout({0})", ex.Message);
+                        Log.Error("Read timeout({0})", ex.Message);
                         return new byte[0];
                     }
                 }
 
                 RawBytesReceived += length;
-                DataBytesReceived += length;
+                //DataBytesReceived += length;
 
                 return buf;
             }
@@ -267,12 +267,12 @@ namespace Bifrost
             {
                 if (!NetworkStream.CanWrite || Closed)
                     return;
-                
+
                 NetworkStream.Write(wrapped_data, 0, wrapped_data.Length);
                 NetworkStream.Flush();
             }
 
-            DataBytesSent += data.Length;
+            //DataBytesSent += data.Length;
             RawBytesSent += wrapped_data.Length;
         }
     }

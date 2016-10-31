@@ -265,9 +265,10 @@ namespace Bifrost
                             int len = aes.ProcessBytes(ciphertext, 0, ciphertext.Length, final_message, 0);
                             aes.DoFinal(final_message, len);
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            Log.Warn("Invalid MAC! Ignoring message.");
+                            Log.Warn("Invalid MAC! Ignoring message of length {0}.", raw_message.Length);
+                            Log.Error(ex);
                             return null;
                         }
                         break;
@@ -327,6 +328,11 @@ namespace Bifrost
         {
             if (msg == null)
                 return;
+
+            if(msg.Type == MessageType.Data)
+            {
+                Tunnel.DataBytesSent += msg.Store["data"].Length;
+            }
 
             byte[] raw_message = msg.Serialize();
             byte[] final_message;

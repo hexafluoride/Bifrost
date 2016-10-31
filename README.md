@@ -36,19 +36,19 @@ TcpTunnel tunnel = new TcpTunnel(client);
 ServerLink link = new ServerLink(tunnel);
 link.LoadCertificatesFromFiles("test.ca", "server.privkey", "server.sign");
 
-if(!link.PerformHandshake())
-{
-  Console.WriteLine("Handshake failed!");
-  return;
-}
-
 link.OnDataReceived += (l, data) =>
 {
   Console.WriteLine("Received {0} bytes from client: {1}", data.Length, Encoding.UTF8.GetString(data));
   l.SendData(data);
 };
 
-link.StartThreads();
+var result = link.PerformHandshake();
+
+if(result.Type != HandshakeResultType.Successful)
+{
+  Console.WriteLine("Handshake failed with type {0}", result.Type);
+  return;
+}
 
 Console.ReadLine();
 ```
@@ -60,18 +60,19 @@ TcpTunnel tunnel = new TcpTunnel(client);
 ClientLink link = new ClientLink(tunnel);
 link.LoadCertificatesFromFiles("test.ca", "client.privkey", "client.sign");
 
-if(!link.PerformHandshake())
-{
-  Console.WriteLine("Handshake failed!");
-  return;
-}
-
 link.OnDataReceived += (l, data) =>
 {
   Console.WriteLine("Received {0} bytes from server: {1}", data.Length, Encoding.UTF8.GetString(data));
 };
 
-link.StartThreads();
+var result = link.PerformHandshake();
+
+if(result.Type != HandshakeResultType.Successful)
+{
+  Console.WriteLine("Handshake failed with type {0}", result.Type);
+  return;
+}
+
 link.SendData(Encoding.UTF8.GetBytes("Hello World!"));
 
 Console.ReadLine();

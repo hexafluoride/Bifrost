@@ -174,6 +174,7 @@ namespace CertManager
 
         static void ShowHelp(OptionSet set)
         {
+            Console.WriteLine();
             Console.WriteLine("Usage: certmanager --action generate-ca|generate-key|sign-key --ca-path /path/to/ca [OPTIONS]");
             Console.WriteLine("Generates and signs certificates for use with Bifrost.");
             Console.WriteLine();

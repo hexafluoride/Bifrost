@@ -54,6 +54,11 @@
     <Compile Include="RsaHelpers.cs" />
     <Compile Include="SizeQueue.cs" />
     <Compile Include="ITunnel.cs" />
+    <Compile Include="WebSocketTunnel.cs" />
+    <Compile Include="WebSockets\ClientConnection.cs" />
+    <Compile Include="WebSockets\ServerConnection.cs" />
+    <Compile Include="WebSockets\WebSocketConnection.cs" />
+    <Compile Include="WebSockets\WebSocketMessage.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

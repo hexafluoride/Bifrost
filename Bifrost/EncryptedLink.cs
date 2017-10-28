@@ -36,6 +36,7 @@ namespace Bifrost
         public AsymmetricCipherKeyPair Certificate;
         public RsaKeyParameters CertificateAuthority;
         public byte[] Signature;
+        public byte[] PeerSignature;
 
         public ECDHBasicAgreement KeyAgreement = new ECDHBasicAgreement();
         public AsymmetricCipherKeyPair ECDHEPair;
@@ -87,12 +88,12 @@ namespace Bifrost
         public void LoadCertificatesFromFiles(string ca_path, string key_path, string sign_path)
         {
             CertificateAuthority = (RsaKeyParameters)RsaHelpers.PemDeserialize(File.ReadAllText(ca_path));
-            Log.Trace("Loaded certificate authority from {0}", ca_path);
+            Log.Debug("Loaded certificate authority from {0}", ca_path);
             Certificate = (AsymmetricCipherKeyPair)RsaHelpers.PemDeserialize(File.ReadAllText(key_path));
-            Log.Trace("Loaded certificate from {0}", key_path);
+            Log.Debug("Loaded certificate from {0}", key_path);
 
             Signature = File.ReadAllBytes(sign_path);
-            Log.Trace("Loaded signature from {0}", sign_path);
+            Log.Debug("Loaded signature from {0}", sign_path);
 
             GenerateECDHEKeyPair();
         }        
@@ -106,13 +107,13 @@ namespace Bifrost
         public void LoadCertificatesFromText(string ca, string key, string sign)
         {
             CertificateAuthority = (RsaKeyParameters)RsaHelpers.PemDeserialize(Encoding.UTF8.GetString(Convert.FromBase64String(ca)));
-            Log.Trace("Loaded certificate authority.");
+            Log.Debug("Loaded certificate authority.");
 
             Certificate = (AsymmetricCipherKeyPair)RsaHelpers.PemDeserialize(Encoding.UTF8.GetString(Convert.FromBase64String(key)));
-            Log.Trace("Loaded certificate.");
+            Log.Debug("Loaded certificate.");
 
             Signature = Convert.FromBase64String(sign);
-            Log.Trace("Loaded signature.");
+            Log.Debug("Loaded signature.");
 
             GenerateECDHEKeyPair();
         }
@@ -124,11 +125,12 @@ namespace Bifrost
         /// <returns>512 bits worth of data that can be used to derive a MAC and key from.</returns>
         public byte[] CalculateHKDF(byte[] secret)
         {
-            HMACSHA512 hmac = new HMACSHA512();
+            HMACSHA512 hmac = new HMACSHA512()
+            {
+                Key = SharedSalt
+            };
 
-            hmac.Key = SharedSalt;
             byte[] prk = hmac.ComputeHash(secret);
-
             hmac.Key = prk;
             byte[] k1 = hmac.ComputeHash(Encoding.UTF8.GetBytes(HKDFAdditionalInfo + "\0"));
 
@@ -144,7 +146,7 @@ namespace Bifrost
             ECDomainParameters ec_specs = new ECDomainParameters(ec_parameters.Curve, ec_parameters.G, ec_parameters.N, ec_parameters.H, ec_parameters.GetSeed());
             ECKeyPairGenerator generator = new ECKeyPairGenerator();
             generator.Init(new ECKeyGenerationParameters(ec_specs, new SecureRandom()));
-            Log.Trace("Initialized EC key generator with curve P-521");
+            Log.Debug("Initialized EC key generator with curve P-521");
 
             ECDHEPair = generator.GenerateKeyPair();
         }
@@ -201,10 +203,7 @@ namespace Bifrost
                 if (Tunnel.Closed)
                 {
                     Log.Error("HttpTunnel closed, ending ReceiveLoop");
-
-                    if (OnLinkClosed != null)
-                        OnLinkClosed(this);
-
+                    OnLinkClosed?.Invoke(this);
                     return;
                 }
 
@@ -221,9 +220,7 @@ namespace Bifrost
                     if (msg.Type == MessageType.Data)
                     {
                         Tunnel.DataBytesReceived += msg.Store["data"].Length;
-                        
-                        if (OnDataReceived != null)
-                            OnDataReceived(this, msg.Store["data"]);
+                        OnDataReceived?.Invoke(this, msg.Store["data"]);
                     }
                 }
             }

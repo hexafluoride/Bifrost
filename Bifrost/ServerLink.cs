@@ -58,6 +58,7 @@ namespace Bifrost
             byte[] rsa_signature = msg.Store["rsa_signature"];
             byte[] ecdh_public_key = msg.Store["ecdh_public_key"];
             byte[] ecdh_signature = msg.Store["ecdh_signature"];
+            PeerSignature = rsa_signature;
 
             byte[] timestamp = msg.Store["timestamp"];
             DateTime timestamp_dt = MessageHelpers.GetDateTime(BitConverter.ToInt64(timestamp, 0));
@@ -123,6 +124,7 @@ namespace Bifrost
             HMAC.Key = MACKey;
 
             CurrentEncryption = EncryptionMode.AES;
+            CurrentEncryption = EncryptionMode.None;
 
             StartThreads();
 

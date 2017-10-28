@@ -136,7 +136,7 @@ namespace Bifrost
                 sb.AppendLine("User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; FSL 7.0.7.01001)"); // act like Chrome 49 running on Windows 7
             }
 
-            Header = Encoding.UTF8.GetBytes(sb.ToString());
+            Header = Encoding.UTF8.GetBytes(sb.ToString().Replace("\r", ""));
         }
 
         /// <summary>
@@ -235,7 +235,7 @@ namespace Bifrost
 
             sb.AppendLine();
 
-            byte[] header_dyn = Encoding.UTF8.GetBytes(sb.ToString());
+            byte[] header_dyn = Encoding.UTF8.GetBytes(sb.ToString().Replace("\r", ""));
 
             ms.Write(Header, 0, Header.Length);
             ms.Write(header_dyn, 0, header_dyn.Length);

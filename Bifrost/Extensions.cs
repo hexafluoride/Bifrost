@@ -43,7 +43,10 @@ namespace Bifrost
             }
 
             if (reverse)
-                buf = buf.Reverse().ToArray();
+            {
+                Array.Reverse(buf);
+            }
+                //buf = buf.Reverse().ToArray();
 
             return buf;
         }
@@ -56,6 +59,12 @@ namespace Bifrost
             while(true)
             {
                 int read = stream.Read(buf, index, buf.Length - index);
+
+                if (read == 0)
+                {
+                    Log.Error("Read 0 bytes");
+                    break;
+                }
                 index += read;
 
                 if (index >= (len))
@@ -66,7 +75,7 @@ namespace Bifrost
             }
 
             if (reverse)
-                buf = buf.Reverse().ToArray();
+                Array.Reverse(buf);
 
             return buf;
         }
@@ -116,6 +125,14 @@ namespace Bifrost
             var ret = ms.ToArray();
             ms.Close();
             return ret;
+        }
+
+        public static string ToUsefulString(this byte[] arr)
+        {
+            if (arr == null)
+                return "(null)";
+
+            return BitConverter.ToString(arr).Replace("-", "").ToLower();
         }
     }
 }

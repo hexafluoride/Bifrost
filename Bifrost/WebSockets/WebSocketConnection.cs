@@ -21,7 +21,9 @@ namespace Bifrost.WebSockets
 
         private WebSocketMessage FragmentStart { get; set; }
         private MemoryStream FragmentBuffer = new MemoryStream();
-        
+
+        public bool BufferedWrite = false;
+
         internal bool Closed { get; set; }
         internal bool MaskOutgoing { get; set; }
 
@@ -32,6 +34,8 @@ namespace Bifrost.WebSockets
         {
             Task.Factory.StartNew(ReceiveLoop);
             Task.Factory.StartNew(SendLoop);
+
+            //BufferedWrite = true;
         }
 
         private void SendLoop()
@@ -40,7 +44,6 @@ namespace Bifrost.WebSockets
             {
                 try
                 {
-                    
                     byte[] msg = SendQueue.Dequeue();
 
                     SendReal(msg);
@@ -66,7 +69,12 @@ namespace Bifrost.WebSockets
             {
                 try
                 {
-                    WebSocketMessage.FromStream(message, NetworkStream);
+                    var result = WebSocketMessage.FromStream(message, NetworkStream);
+                    if(result == null)
+                    {
+                        Close();
+                        return;
+                    }
 
                     if (message.Final)
                     {
@@ -112,9 +120,8 @@ namespace Bifrost.WebSockets
                                     break;
                                 case Opcode.Close:
                                     Send(WebSocketMessage.Create(new byte[0], Opcode.Close, MaskOutgoing));
-                                    Client.Close();
-                                    Closed = true;
-                                    Log.Info("Closed connection");
+                                    Close();
+                                    Log.Info("Received WebSocket close, disconnected");
                                     return;
                             }
                         }
@@ -153,7 +160,10 @@ namespace Bifrost.WebSockets
         {
             try
             {
-                Send(WebSocketMessage.Create(new byte[0], Opcode.Close, MaskOutgoing));
+                if (BufferedWrite)
+                    Send(WebSocketMessage.Create(new byte[0], Opcode.Close, MaskOutgoing));
+                else
+                    SendReal(WebSocketMessage.Create(new byte[0], Opcode.Close, MaskOutgoing).Serialize());
             }
             catch
             {
@@ -183,13 +193,27 @@ namespace Bifrost.WebSockets
 
         public void Send(byte[] raw)
         {
-            SendQueue.Enqueue(raw);
+            try
+            {
+                if (BufferedWrite)
+                {
+                    SendQueue.Enqueue(raw);
+                }
+                else
+                {
+                    SendReal(raw);
+                }
+            }
+            catch
+            {
+                Close();
+            }
         }
 
         public void Send(WebSocketMessage message)
         {
             byte[] buf = message.Serialize();
-            SendQueue.Enqueue(buf);
+            Send(buf);
         }
 
         internal void SendReal(byte[] wire)

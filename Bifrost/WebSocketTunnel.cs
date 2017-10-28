@@ -7,11 +7,13 @@ using System.Threading.Tasks;
 using Bifrost.WebSockets;
 using System.Net.Sockets;
 using System.Threading;
+using NLog;
 
 namespace Bifrost
 {
     public class WebSocketTunnel : ITunnel
     {
+        private Logger Log = LogManager.GetCurrentClassLogger();
         public WebSocketConnection Connection { get; set; }
 
         #region Statistics
@@ -90,10 +92,21 @@ namespace Bifrost
 
         public byte[] Receive()
         {
-            var msg = Connection.Receive();
-            RawBytesReceived += msg.Length;
+            try
+            {
+                var msg = Connection.Receive();
+                RawBytesReceived += msg.Length;
 
-            return msg;
+                return msg;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("WebSocket connection broken, closing tunnel");
+                Log.Error(ex);
+                Close();
+
+                return null;
+            } 
         }
 
         public void Close()

@@ -62,6 +62,8 @@ namespace Bifrost
             byte[] ecdh_public_key = msg.Store["ecdh_public_key"];
             byte[] ecdh_signature = msg.Store["ecdh_signature"];
 
+            PeerSignature = rsa_signature;
+
             byte[] shared_salt = msg.Store["shared_salt"];
             byte[] salt_signature = msg.Store["shared_salt_signature"];
 
@@ -128,8 +130,11 @@ namespace Bifrost
 
             StartThreads();
 
-            var result_final = new HandshakeResult(HandshakeResultType.Successful, "Handshake successful.");
-            result_final.TimeDrift = difference.TotalSeconds;
+            var result_final = new HandshakeResult(HandshakeResultType.Successful, "Handshake successful.")
+            {
+                TimeDrift = difference.TotalSeconds
+            };
+
             Log.Info(result_final.Message);
             return result_final;
         }

@@ -41,6 +41,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="HandshakeResult.cs" />
+    <Compile Include="HttpListener.cs" />
+    <Compile Include="IListener.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Message.cs" />
@@ -50,10 +52,14 @@
     <Compile Include="ServerLink.cs" />
     <Compile Include="ClientLink.cs" />
     <Compile Include="TcpTunnel.cs" />
+    <Compile Include="Udp\UdpListener.cs" />
+    <Compile Include="Udp\UdpSession.cs" />
+    <Compile Include="Udp\UdpTunnel.cs" />
     <Compile Include="Utilities.cs" />
     <Compile Include="RsaHelpers.cs" />
     <Compile Include="SizeQueue.cs" />
     <Compile Include="ITunnel.cs" />
+    <Compile Include="WebSocketListener.cs" />
     <Compile Include="WebSocketTunnel.cs" />
     <Compile Include="WebSockets\ClientConnection.cs" />
     <Compile Include="WebSockets\ServerConnection.cs" />

@@ -71,12 +71,13 @@ namespace Bifrost.Udp
 
             EndPoint = new IPEndPoint(addr, port);
 
-            UdpListener temp_listener = new UdpListener(IPAddress.Any, SourcePort);
-            temp_listener.Socket.Send(new byte[0], 0, EndPoint);
-
-            temp_listener.Start();
+            UdpListener temp_listener = new UdpListener(IPAddress.Any, SourcePort, false);
 
             Session = new UdpSession(temp_listener.Socket, temp_listener, EndPoint);
+            temp_listener.Sessions[UdpListener.EndPointToTuple(EndPoint)] = Session;
+
+            temp_listener.Socket.Send(new byte[0], 0, EndPoint);
+            temp_listener.Start();
         }
 
         public UdpTunnel(IPEndPoint ep) :
@@ -97,7 +98,8 @@ namespace Bifrost.Udp
 
         public byte[] Receive()
         {
-            return Session.Receive();
+            var ret = Session.Receive();
+            return ret;
         }
     }
 }

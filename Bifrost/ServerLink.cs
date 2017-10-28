@@ -124,7 +124,6 @@ namespace Bifrost
             HMAC.Key = MACKey;
 
             CurrentEncryption = EncryptionMode.AES;
-            CurrentEncryption = EncryptionMode.None;
 
             StartThreads();
 

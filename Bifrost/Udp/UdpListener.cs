@@ -21,14 +21,16 @@ namespace Bifrost.Udp
         public int Port { get; set; }
 
         public bool Running { get; set; }
+        public bool QueueConnections { get; set; }
         private Thread listener_thread;
         private ManualResetEvent listener_stop = new ManualResetEvent(false);
 
         public Dictionary<byte[], UdpSession> Sessions = new Dictionary<byte[], UdpSession>(new StructuralEqualityComparer<byte[]>());
 
-        public UdpListener(IPAddress listen, int port)
+        public UdpListener(IPAddress listen, int port, bool queue = true)
         {
             Running = false;
+            QueueConnections = queue;
 
             Socket = new UdpClient(new IPEndPoint(listen, port));
             Port = port;
@@ -91,19 +93,31 @@ namespace Bifrost.Udp
             {
                 byte[] buf = Socket.Receive(ref receive_ep);
 
+                //Log.Info(buf.Length);
+
                 try
                 {
                     byte[] tuple = EndPointToTuple(receive_ep);
 
                     if (Sessions.ContainsKey(tuple))
                     {
-                        Sessions[tuple].ReceiveQueue.Add(buf);
+                        Sessions[tuple].Push(buf);
                     }
                     else
                     {
                         UdpSession session = new UdpSession(Socket, this, receive_ep);
+
                         Sessions.Add(tuple, session);
-                        NewSessions.Add(session);
+
+                        if (QueueConnections)
+                        {
+                            NewSessions.Add(session);
+                        }
+
+                        if (buf.Length > 0)
+                            session.Push(buf);
+                        else
+                            session.Send(new byte[0]);
                     }
                 }
                 catch (Exception ex)

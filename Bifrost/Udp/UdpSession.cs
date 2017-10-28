@@ -24,9 +24,18 @@ namespace Bifrost.Udp
             EndPoint = endpoint;
         }
 
+        internal void Push(byte[] data)
+        {
+            if (data.Length == 0)
+                return;
+
+            ReceiveQueue.Add(data);
+        }
+
         public byte[] Receive()
         {
-            return ReceiveQueue.Take();
+            var ret = ReceiveQueue.Take();
+            return ret;
         }
 
         public void Send(byte[] data)

@@ -8,15 +8,7 @@ I'm just an amateur who's interested in cryptography and networking. This protoc
 Bifrost is a cryptoprotocol, designed to be reliable, secure, lightweight and easy to understand. The whole library is around 1k lines of fully documented C#. Bifrost was designed in response to TLS, which has a very long and verbose specification document. In contrast, Bifrost is very easy to understand and doesn't require much effort to set up.
 
 ## Cryptographic primitives
-Bifrost mostly depends on the excellent [BouncyCastle](http://bouncycastle.org/) library to do crypto. The used primitives are:
-
-|Function|Primitive|
-|---|---|
-|Authentication|RSA-2048|
-|Signatures|RSA-2048 with SHA-256|
-|Encryption|AES-256 in GCM|
-|Key stretching|HKDF with SHA-512|
-|Key exchange|ECDHE with the P-521 curve|
+Bifrost mostly depends on the excellent [BouncyCastle](http://bouncycastle.org/) library to do crypto. Since version 0.3, Bifrost has been able to do cipher selection, click [here](https://github.com/hexafluoride/Bifrost/wiki/Message-format) to view a list of available cipher suites.
 
 ## Public key infrastructure
 Since Bifrost is designed to be simple, it has its own PKI designed around PEM keypairs and raw signature files. You can use [CertManager](https://github.com/hexafluoride/Bifrost/tree/master/CertManager) to create CAs or keypairs.

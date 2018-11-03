@@ -164,6 +164,8 @@ namespace Bifrost
         Control = 0x01,
         Data = 0x02,
         Heartbeat = 0x03,
+        ClientHello = 0xFB,
+        ServerHello = 0xFC,
         AuthRequest = 0xFD,
         AuthResponse = 0xFE,
         AuthFinalize = 0xFF

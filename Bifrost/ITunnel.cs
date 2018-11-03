@@ -12,6 +12,9 @@ namespace Bifrost
         long RawBytesReceived { get; set; }
         long DataBytesReceived { get; set; }
 
+        ulong PacketsDropped { get; }
+        ulong PacketsReceived { get; }
+
         bool Closed { get; set; }
         void Send(byte[] data);
         byte[] Receive();

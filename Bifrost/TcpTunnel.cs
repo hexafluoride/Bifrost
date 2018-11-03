@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -12,12 +13,17 @@ namespace Bifrost
     /// </summary>
     public class TcpTunnel : ITunnel
     {
+        public Logger Log = LogManager.GetCurrentClassLogger();
+
         public TcpClient Connection { get; set; }
         public NetworkStream NetworkStream { get; set; }
 
         public bool Closed { get; set; }
 
         #region Statistics
+        public ulong PacketsDropped { get => 0; }
+        public ulong PacketsReceived { get => 0; }
+
         public long RawBytesSent { get; set; }
         public long DataBytesSent { get; set; }
         public long ProtocolBytesSent
@@ -89,12 +95,21 @@ namespace Bifrost
         /// <returns>The received chunk of data.</returns>
         public byte[] Receive()
         {
-            uint len = NetworkStream.ReadUInt();
+            try
+            {
+                uint len = NetworkStream.ReadUInt();
 
-            RawBytesReceived += len + 4;
-            DataBytesReceived += len;
+                RawBytesReceived += len + 4;
+                DataBytesReceived += len;
 
-            return NetworkStream.ReadSafe(len);
+                return NetworkStream.ReadSafe(len);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn(ex);
+                Close();
+                return new byte[0];
+            }
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -9,6 +10,8 @@ namespace Bifrost
 {
     public class HttpListener : IListener
     {
+        public BlockingCollection<ITunnel> Queue { get; set; }
+
         public TcpListener Listener { get; set; }
 
         public bool Server { get; set; }

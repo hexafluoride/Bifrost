@@ -18,6 +18,10 @@ using Org.BouncyCastle.Asn1.Nist;
 using Org.BouncyCastle.OpenSsl;
 
 using NLog;
+using Bifrost.Ciphers;
+using System.Threading;
+using Bifrost.KeyExchanges;
+using Bifrost.MACs;
 
 namespace Bifrost
 {
@@ -30,30 +34,32 @@ namespace Bifrost
     /// </summary>
     public class EncryptedLink
     {
+        public static List<CipherSuiteIdentifier> AllowedSuites = new List<CipherSuiteIdentifier>();
+        public static List<CipherSuiteIdentifier> SaneSuites = new List<CipherSuiteIdentifier>()
+        {
+            new CipherSuiteIdentifier(AesGcmCipher.Identifier, EcdhKeyExchange.Identifier, IdentityMAC.Identifier),
+            new CipherSuiteIdentifier(AesCbcCipher.Identifier, EcdhKeyExchange.Identifier, HMACSHA.Identifier),
+            new CipherSuiteIdentifier(ChaChaCipher.Identifier, EcdhKeyExchange.Identifier, HMACSHA.Identifier)
+        };
+
         public ITunnel Tunnel { get; set; }
-        public EncryptionMode CurrentEncryption = EncryptionMode.None;
+        public CipherSuite Suite { get; set; }
+
+        public bool Closed { get; set; }
 
         public AsymmetricCipherKeyPair Certificate;
         public RsaKeyParameters CertificateAuthority;
         public byte[] Signature;
         public byte[] PeerSignature;
-
-        public ECDHBasicAgreement KeyAgreement = new ECDHBasicAgreement();
-        public AsymmetricCipherKeyPair ECDHEPair;
-        public readonly string HKDFAdditionalInfo =
-            "cipher-aes256-gcm\n" +
-            "application-bifrost\n" +
-            "key-exchange-ecdhe-rsa\n";
-
-        public GcmBlockCipher AES;
+        
         public SHA256CryptoServiceProvider SHA = new SHA256CryptoServiceProvider();
-        public HMACSHA256 HMAC = new HMACSHA256();
 
         public event DataReceived OnDataReceived;
         public event LinkClosed OnLinkClosed;
 
         public bool BufferedWrite = false;
-        public bool Dead = false;
+
+        public bool HeartbeatCapable = false;
 
         public TimeSpan MaximumTimeMismatch = new TimeSpan(0, 5, 0);
 
@@ -61,14 +67,19 @@ namespace Bifrost
             
         public RNGCryptoServiceProvider RNG = new RNGCryptoServiceProvider();
 
-        protected byte[] SecretKey = new byte[32];
-        protected byte[] MACKey = new byte[32];
-
-        public KeyParameter AESKey;
-
-        public byte[] SharedSalt;
+        private DateTime _last_received = DateTime.Now;
+        private DateTime _last_sent = DateTime.Now;
 
         private Logger Log = LogManager.GetCurrentClassLogger();
+
+        private Capability LocalCapabilities = // these are not used yet
+            Capability.CapabilityNegotiation |
+            Capability.Heartbeat |
+            Capability.CipherSelection;
+
+        private Capability RemoteCapabilities;
+
+        public byte[] AttestationToken { get; set; }
 
         public EncryptedLink()
         {
@@ -94,8 +105,6 @@ namespace Bifrost
 
             Signature = File.ReadAllBytes(sign_path);
             Log.Debug("Loaded signature from {0}", sign_path);
-
-            GenerateECDHEKeyPair();
         }        
 
         /// <summary>
@@ -114,41 +123,29 @@ namespace Bifrost
 
             Signature = Convert.FromBase64String(sign);
             Log.Debug("Loaded signature.");
-
-            GenerateECDHEKeyPair();
         }
 
-        /// <summary>
-        /// Calculates a MAC and key pair using HKDF with the provided secret.
-        /// </summary>
-        /// <param name="secret">The secret to derive our MAC and key from.</param>
-        /// <returns>512 bits worth of data that can be used to derive a MAC and key from.</returns>
-        public byte[] CalculateHKDF(byte[] secret)
+        public void Close()
         {
-            HMACSHA512 hmac = new HMACSHA512()
+            // send closing message
+
+            try
             {
-                Key = SharedSalt
-            };
+                SendMessage(new Message(MessageType.Control, 0xFF));
+            }
+            catch
+            {
 
-            byte[] prk = hmac.ComputeHash(secret);
-            hmac.Key = prk;
-            byte[] k1 = hmac.ComputeHash(Encoding.UTF8.GetBytes(HKDFAdditionalInfo + "\0"));
+            }
 
-            return k1;
-        }
+            // close underlying tunnel
+            Tunnel?.Close();
 
-        /// <summary>
-        /// Generates an ECDHE key pair using the P-521 curve.
-        /// </summary>
-        public void GenerateECDHEKeyPair()
-        {
-            X9ECParameters ec_parameters = NistNamedCurves.GetByName("P-521");
-            ECDomainParameters ec_specs = new ECDomainParameters(ec_parameters.Curve, ec_parameters.G, ec_parameters.N, ec_parameters.H, ec_parameters.GetSeed());
-            ECKeyPairGenerator generator = new ECKeyPairGenerator();
-            generator.Init(new ECKeyGenerationParameters(ec_specs, new SecureRandom()));
-            Log.Debug("Initialized EC key generator with curve P-521");
+            // unblock SendLoop
+            SendQueue.Enqueue(null);
 
-            ECDHEPair = generator.GenerateKeyPair();
+            Closed = true;
+            OnLinkClosed?.Invoke(this);
         }
 
         /// <summary>
@@ -167,21 +164,6 @@ namespace Bifrost
         }
 
         /// <summary>
-        /// Exports our ECDHE public key to a string.
-        /// </summary>
-        /// <returns>The serialized public key.</returns>
-        public string ExportECDHPublicKey()
-        {
-            StringWriter sw = new StringWriter();
-            PemWriter pem = new PemWriter(sw);
-
-            pem.WriteObject(ECDHEPair.Public);
-            pem.Writer.Flush();
-
-            return sw.ToString();
-        }
-
-        /// <summary>
         /// Starts the receive/send thread pair.
         /// </summary>
         public void StartThreads()
@@ -189,7 +171,11 @@ namespace Bifrost
             Utilities.StartThread(ReceiveLoop);
             Utilities.StartThread(SendLoop);
 
-            BufferedWrite = true;
+            BufferedWrite = false;
+
+            SendMessage(new Message(MessageType.Heartbeat, 0)); // signal heartbeat cap
+            Utilities.StartThread(KeepAlive);
+            Utilities.StartThread(CheckAlive);
         }
 
         /// <summary>
@@ -198,12 +184,12 @@ namespace Bifrost
         private void ReceiveLoop()
         {
             MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider();
-            while(true)
+            while(!Closed)
             {
                 if (Tunnel.Closed)
                 {
-                    Log.Error("HttpTunnel closed, ending ReceiveLoop");
-                    OnLinkClosed?.Invoke(this);
+                    Log.Error("ITunnel closed, ending ReceiveLoop");
+                    Close();
                     return;
                 }
 
@@ -214,14 +200,16 @@ namespace Bifrost
                     Log.Trace("Null message, continuing");
                     continue;
                 }
-
-                lock (msg)
+                
+                if (msg.Type == MessageType.Data)
                 {
-                    if (msg.Type == MessageType.Data)
-                    {
-                        Tunnel.DataBytesReceived += msg.Store["data"].Length;
-                        OnDataReceived?.Invoke(this, msg.Store["data"]);
-                    }
+                    Tunnel.DataBytesReceived += msg.Store["data"].Length;
+                    OnDataReceived?.Invoke(this, msg.Store["data"]);
+                }
+
+                if (msg.Type == MessageType.Heartbeat && !HeartbeatCapable)
+                {
+                    HeartbeatCapable = true;
                 }
             }
         }
@@ -233,51 +221,20 @@ namespace Bifrost
         public Message Receive()
         {
             byte[] raw_message = Tunnel.Receive();
-            byte[] final_message;
 
             if (raw_message == null || raw_message.Length == 0)
             {
-                Log.Trace("Empty read from HttpTunnel");
+                Log.Trace("Empty read from ITunnel");
                 return null;
             }
 
-            switch (CurrentEncryption)
-            {
-                case EncryptionMode.AES:
-                    {
-                        try
-                        {
-                            var aes = new GcmBlockCipher(new AesFastEngine());
-
-                            byte[] iv = new byte[16];
-                            byte[] ciphertext = new byte[raw_message.Length - iv.Length];
-
-                            Array.Copy(raw_message, iv, iv.Length);
-                            Array.Copy(raw_message, iv.Length, ciphertext, 0, ciphertext.Length);
-
-                            var parameters = new AeadParameters(new KeyParameter(SecretKey), 128, iv);
-                            aes.Init(false, parameters);
-
-                            final_message = new byte[aes.GetOutputSize(ciphertext.Length)];
-                            int len = aes.ProcessBytes(ciphertext, 0, ciphertext.Length, final_message, 0);
-                            aes.DoFinal(final_message, len);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warn("Invalid MAC! Ignoring message of length {0}.", raw_message.Length);
-                            Log.Error(ex);
-                            return null;
-                        }
-                        break;
-                    }
-                default:
-                    final_message = raw_message;
-                    break;
-            }
+            var final_message = Suite.Decrypt(raw_message);
 
             try
             {
-                return Message.Parse(final_message);
+                var ret = Message.Parse(final_message);
+                _last_received = DateTime.Now;
+                return ret;
             }
             catch
             {
@@ -294,7 +251,7 @@ namespace Bifrost
             while (Tunnel.Closed)
                 ;
 
-            while (!Tunnel.Closed)
+            while (!Closed)
             {
                 Message msg = SendQueue.Dequeue();
                 _SendMessage(msg);
@@ -332,37 +289,9 @@ namespace Bifrost
             }
 
             byte[] raw_message = msg.Serialize();
-            byte[] final_message;
+            byte[] final_message = Suite.Encrypt(raw_message);
 
-            switch (CurrentEncryption)
-            {
-                case EncryptionMode.AES:
-                    {
-                        var aes = new GcmBlockCipher(new AesFastEngine());
-
-                        MemoryStream ms = new MemoryStream();
-
-                        byte[] iv = new byte[16];
-                        RNG.GetBytes(iv);
-
-                        var parameters = new AeadParameters(AESKey, 128, iv);
-                        aes.Init(true, parameters);
-
-                        var ciphertext = new byte[aes.GetOutputSize(raw_message.Length)];
-                        int len = aes.ProcessBytes(raw_message, 0, raw_message.Length, ciphertext, 0);
-                        aes.DoFinal(ciphertext, len);
-
-                        ms.Write(iv, 0, iv.Length);
-                        ms.Write(ciphertext, 0, ciphertext.Length);
-
-                        final_message = ms.ToArray();
-                        break;
-                    }
-                default:
-                    final_message = raw_message;
-                    break;
-            }
-            
+            _last_sent = DateTime.Now;
             Tunnel.Send(final_message);
         }
 
@@ -374,14 +303,30 @@ namespace Bifrost
         {
             SendMessage(MessageHelpers.CreateDataMessage(data));
         }
-    }
 
-    /// <summary>
-    /// Describes an EncryptedLink's current encryption mode. Should always be AES while sending data.
-    /// </summary>
-    public enum EncryptionMode
-    {
-        None, AES
+        public void CheckAlive()
+        {
+            Log.Info("Heartbeat capable peer.");
+
+            while ((DateTime.Now - _last_received).TotalSeconds < 10)
+                Thread.Sleep(500);
+
+            if(!Closed)
+            {
+                Close();
+            }
+        }
+
+        public void KeepAlive()
+        {
+            while (!Closed)
+            {
+                SendMessage(new Message(MessageType.Heartbeat, 0));
+
+                while ((DateTime.Now - _last_sent).TotalSeconds < 3)
+                    Thread.Sleep(500);
+            }
+        }
     }
 }
 

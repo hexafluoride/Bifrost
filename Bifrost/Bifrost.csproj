@@ -40,9 +40,21 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Capability.cs" />
+    <Compile Include="CipherSuite.cs" />
+    <Compile Include="Ciphers\AesCbcCipher.cs" />
+    <Compile Include="Ciphers\AesGcmCipher.cs" />
+    <Compile Include="Ciphers\ChaChaCipher.cs" />
+    <Compile Include="Ciphers\ICipher.cs" />
+    <Compile Include="Ciphers\IdentityCipher.cs" />
     <Compile Include="HandshakeResult.cs" />
     <Compile Include="HttpListener.cs" />
     <Compile Include="IListener.cs" />
+    <Compile Include="KeyExchanges\EcdhKeyExchange.cs" />
+    <Compile Include="KeyExchanges\IKeyExchange.cs" />
+    <Compile Include="MACs\HMAC.cs" />
+    <Compile Include="MACs\IdentityMAC.cs" />
+    <Compile Include="MACs\IMAC.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Message.cs" />

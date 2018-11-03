@@ -8,6 +8,7 @@ using Bifrost.WebSockets;
 using System.Net.Sockets;
 using System.Threading;
 using NLog;
+using System.Net;
 
 namespace Bifrost
 {
@@ -17,6 +18,8 @@ namespace Bifrost
         public WebSocketConnection Connection { get; set; }
 
         #region Statistics
+        public ulong PacketsDropped { get => 0; }
+        public ulong PacketsReceived { get => 0; }
         public long RawBytesSent { get; set; }
         public long DataBytesSent { get; set; }
         public long ProtocolBytesSent
@@ -112,6 +115,18 @@ namespace Bifrost
         public void Close()
         {
             Connection.Close();
+        }
+
+        public override string ToString()
+        {
+            try
+            {
+                return string.Format("WebSocket tunnel from {0}", (IPEndPoint)Connection?.Client?.Client?.RemoteEndPoint);
+            }
+            catch (Exception ex)
+            {
+                return "WebSocket tunnel, unknown origin";
+            }
         }
     }
 }

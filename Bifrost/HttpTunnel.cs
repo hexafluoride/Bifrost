@@ -36,7 +36,9 @@ namespace Bifrost
 
         private Logger Log = LogManager.GetCurrentClassLogger();
 
-#region Statistics
+        #region Statistics
+        public ulong PacketsDropped { get => 0; }
+        public ulong PacketsReceived { get => 0; }
         public long RawBytesSent { get; set; }
         public long DataBytesSent { get; set; }
         public long ProtocolBytesSent

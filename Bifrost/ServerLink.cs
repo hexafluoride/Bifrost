@@ -11,6 +11,11 @@ using Org.BouncyCastle.Crypto.Engines;
 using Org.BouncyCastle.Crypto.Parameters;
 
 using NLog;
+using Bifrost.Ciphers;
+using System.Threading;
+using Bifrost.KeyExchanges;
+using System.Collections.Generic;
+using Bifrost.MACs;
 
 namespace Bifrost
 {
@@ -30,13 +35,52 @@ namespace Bifrost
             AuthenticateClient = auth_client;
         }
 
+        public HandshakeResult PerformHandshake(List<CipherSuiteIdentifier> allowed_suites = null)
+        {
+            allowed_suites = allowed_suites ?? (AllowedSuites.Any() ? AllowedSuites : SaneSuites);
+
+            ManualResetEvent done = new ManualResetEvent(false);
+            HandshakeResult result = new HandshakeResult(HandshakeResultType.Timeout, "Handshake timed out.");
+
+            var thread = Utilities.StartThread(delegate
+            {
+                try
+                {
+                    result = _PerformHandshake(allowed_suites);
+                }
+                catch (Exception ex)
+                {
+                    result = new HandshakeResult(HandshakeResultType.Other, "Exception occurred.");
+                    Log.Error(ex);
+                }
+                done.Set();
+            });
+
+            if (!done.WaitOne(10000))
+            {
+                Close();
+                Thread.Sleep(100);
+                thread.Abort();
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// Perform a server-side handshake.
         /// </summary>
         /// <returns>A HandshakeResult class containing information about the handshake attempt.</returns>
-        public HandshakeResult PerformHandshake()
+        private HandshakeResult _PerformHandshake(List<CipherSuiteIdentifier> allowed_suites)
         {
+            Suite = new CipherSuite()
+            {
+                Cipher = new IdentityCipher(),
+                MAC = new IdentityMAC()
+            };
+
             Message msg = Receive();
+
+            Log.Info(msg.Type);
 
             if (msg == null)
             {
@@ -46,9 +90,59 @@ namespace Bifrost
                 return result;
             }
 
+            if (!msg.CheckType(MessageType.ClientHello, 0x00))
+            {
+                var result = new HandshakeResult(HandshakeResultType.UnexpectedMessage, "Received message of type {0}/0x{1:X2} while expecting ClientHello/0x00. Terminating handshake.", msg.Type, msg.Subtype);
+                Log.Error(result.Message);
+                Tunnel.Close();
+                return result;
+            }
+
+            var peer_suites = new List<CipherSuiteIdentifier>();
+            var suite_data = msg.Store["allowed_suites"];
+
+            Log.Debug("{0} bytes of allowed suites", suite_data.Length);
+
+            for(int i = 0; i < suite_data.Length; i += CipherSuiteIdentifier.IdentifierLength)
+            {
+                peer_suites.Add(new CipherSuiteIdentifier(suite_data, i));
+            }
+
+            peer_suites = peer_suites.Distinct().ToList();
+
+            var suite_scores = new Dictionary<CipherSuiteIdentifier, int>();
+
+            for(int i = 0; i < allowed_suites.Count; i++)
+            {
+                for(int j = 0; j < peer_suites.Count; j++)
+                {
+                    var our_suite = allowed_suites[i];
+                    var their_suite = peer_suites[j];
+
+                    if (our_suite != their_suite)
+                        continue;
+
+                    suite_scores[our_suite] = i + j;
+                }
+            }
+
+            var chosen_suite = suite_scores.OrderBy(p => p.Value).First().Key;
+
+            SendMessage(MessageHelpers.CreateServerHello(this, chosen_suite));
+
+            Suite = chosen_suite.CreateSuite();
+            var real_cipher = Suite.Cipher;
+            var real_mac = Suite.MAC;
+
+            Suite.Cipher = new IdentityCipher(); // temporarily set suite cipher to IdentityCipher so we can continue handshake
+            Suite.MAC = new IdentityMAC(); // likewise
+            Suite.Initialize();
+
+            msg = Receive();
+
             if (!msg.CheckType(MessageType.AuthRequest, 0x00))
             {
-                var result = new HandshakeResult(HandshakeResultType.UnexpectedMessage, "Received message of type {0}/0x{1:X} while expecting AuthRequest/0x00. Terminating handshake.", msg.Type, msg.Subtype);
+                var result = new HandshakeResult(HandshakeResultType.UnexpectedMessage, "Received message of type {0}/0x{1:X2} while expecting AuthRequest/0x00. Terminating handshake.", msg.Type, msg.Subtype);
                 Log.Error(result.Message);
                 Tunnel.Close();
                 return result;
@@ -63,6 +157,9 @@ namespace Bifrost
             byte[] timestamp = msg.Store["timestamp"];
             DateTime timestamp_dt = MessageHelpers.GetDateTime(BitConverter.ToInt64(timestamp, 0));
             TimeSpan difference = (DateTime.UtcNow - timestamp_dt).Duration();
+
+            if (msg.Store.ContainsKey("attestation_token"))
+                AttestationToken = msg.Store["attestation_token"];
 
             if (!timestamp.SequenceEqual(ecdh_public_key.Skip(ecdh_public_key.Length - 8)))
             {
@@ -100,36 +197,21 @@ namespace Bifrost
                 return result;
             }
 
-            PemReader pem = new PemReader(new StringReader(Encoding.UTF8.GetString(ecdh_public_key)));
+            Suite.SharedSalt = new byte[16];
+            RNG.GetBytes(Suite.SharedSalt);
 
-            ECPublicKeyParameters peer_ecdh_pk = (ECPublicKeyParameters)pem.ReadObject();
-            ECPrivateKeyParameters self_priv = ECDHEPair.Private as ECPrivateKeyParameters;
+            SendMessage(MessageHelpers.CreateAuthResponse(this));
 
-            SharedSalt = new byte[16];
-            RNG.GetBytes(SharedSalt);
-
-            SendMessage(MessageHelpers.CreateECDHEResponse(this));
-
-            IBasicAgreement agreement = AgreementUtilities.GetBasicAgreement("ECDH");
-            agreement.Init(self_priv);
-
-            var shared_secret = agreement.CalculateAgreement(peer_ecdh_pk).ToByteArray();
-
-            byte[] prekey = CalculateHKDF(shared_secret);
-            Array.Copy(prekey, 0, SecretKey, 0, 32);
-            Array.Copy(prekey, 32, MACKey, 0, 32);
-
-            AES = new GcmBlockCipher(new AesFastEngine());
-            AESKey = new KeyParameter(SecretKey);
-            HMAC.Key = MACKey;
-
-            CurrentEncryption = EncryptionMode.AES;
+            Suite.Cipher = real_cipher;
+            Suite.MAC = real_mac;
+            var shared_secret = Suite.FinalizeKeyExchange(ecdh_public_key);
 
             StartThreads();
 
             var result_final = new HandshakeResult(HandshakeResultType.Successful, "Handshake successful.");
             result_final.TimeDrift = difference.TotalSeconds;
             Log.Info(result_final.Message);
+            Log.Info("Cipher: {0}, key exchange: {1}, MAC: {2}", Suite.Cipher.HumanName, Suite.KeyExchange.HumanName, Suite.MAC.HumanName);
             return result_final;
         }
     }

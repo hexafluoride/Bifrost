@@ -17,7 +17,8 @@ namespace Bifrost.Udp
         public Logger Log = LogManager.GetCurrentClassLogger();
 
         public UdpClient Socket { get; set; }
-        private BlockingCollection<UdpSession> NewSessions = new BlockingCollection<UdpSession>();
+        public BlockingCollection<ITunnel> Queue { get; set; }
+        public IPEndPoint EndPoint { get; set; }
         public int Port { get; set; }
 
         public bool Running { get; set; }
@@ -25,14 +26,16 @@ namespace Bifrost.Udp
         private Thread listener_thread;
         private ManualResetEvent listener_stop = new ManualResetEvent(false);
 
-        public Dictionary<byte[], UdpSession> Sessions = new Dictionary<byte[], UdpSession>(new StructuralEqualityComparer<byte[]>());
+        internal Dictionary<byte[], UdpSession> Sessions = new Dictionary<byte[], UdpSession>(new StructuralEqualityComparer<byte[]>());
 
         public UdpListener(IPAddress listen, int port, bool queue = true)
         {
+            Queue = new BlockingCollection<ITunnel>();
+
             Running = false;
             QueueConnections = queue;
 
-            Socket = new UdpClient(new IPEndPoint(listen, port));
+            EndPoint = new IPEndPoint(listen, port);
             Port = port;
 
             //Task.Factory.StartNew(HandlePackets);
@@ -48,6 +51,9 @@ namespace Bifrost.Udp
         {
             if (Running)
                 return;
+            
+            Socket = new UdpClient(EndPoint);
+            Socket.DontFragment = false;
 
             listener_stop.Reset();
 
@@ -68,11 +74,13 @@ namespace Bifrost.Udp
             listener_thread.Abort();
 
             Running = false;
+
+            Socket.Close();
         }
 
         public ITunnel Accept()
         {
-            return new UdpTunnel(NewSessions.Take());
+            return Queue.Take();
         }
 
         public void Close(IPEndPoint endpoint)
@@ -80,7 +88,7 @@ namespace Bifrost.Udp
             Sessions.Remove(EndPointToTuple(endpoint));
         }
 
-        public void Close(UdpSession session)
+        internal void Close(UdpSession session)
         {
             Sessions.Remove(EndPointToTuple(session.EndPoint));
         }
@@ -88,37 +96,107 @@ namespace Bifrost.Udp
         public void HandlePackets()
         {
             IPEndPoint receive_ep = new IPEndPoint(IPAddress.Any, 0);
+            var mtu_special = Encoding.ASCII.GetBytes("MTU ");
 
-            while(!listener_stop.WaitOne(0))
+            while (!listener_stop.WaitOne(0))
             {
-                byte[] buf = Socket.Receive(ref receive_ep);
-
-                //Log.Info(buf.Length);
-
                 try
                 {
+                    byte[] buf = Socket.Receive(ref receive_ep);
                     byte[] tuple = EndPointToTuple(receive_ep);
 
                     if (Sessions.ContainsKey(tuple))
                     {
-                        Sessions[tuple].Push(buf);
+                        var session = Sessions[tuple];
+
+                        bool mtu_probe = true;
+
+                        for(int i = 0; i < 4; i++)
+                        {
+                            if (buf[i] != mtu_special[i])
+                            {
+                                mtu_probe = false;
+                                break;
+                            }
+                        }
+
+                        if (mtu_probe)
+                        {
+                            session.GoodMTUs.Add(buf.Length);
+                            session.LastMTUProbe = DateTime.Now;
+                            continue;
+                        }
+
+                        if(session.L7FragmentationCapable && !session.NegotiatingMTU)
+                        {
+                            session.HandleFragment(buf);
+                        }
+                        else
+                        {
+                            session.Push(buf);
+                        }
                     }
                     else
                     {
-                        UdpSession session = new UdpSession(Socket, this, receive_ep);
+                        var session = new UdpSession(Socket, this, receive_ep);
 
-                        Sessions.Add(tuple, session);
+                        Message syn_msg = null;
 
-                        if (QueueConnections)
+                        try
                         {
-                            NewSessions.Add(session);
+                            syn_msg = Message.Parse(buf);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Info("Ignored improper connection attempt with message {0}/0x{1:X2}", syn_msg?.Type, syn_msg?.Subtype);
+                            continue;
                         }
 
-                        if (buf.Length > 0)
-                            session.Push(buf);
-                        else
-                            session.Send(new byte[0]);
+                        if (syn_msg == null || syn_msg.Type != MessageType.Control || syn_msg.Subtype != UdpSession.SYN)
+                        {
+                            Log.Info("Ignored improper connection attempt with message {0}/0x{1:X2}", syn_msg?.Type, syn_msg?.Subtype);
+                            continue;
+                        }
+
+                        Sessions[tuple] = session;
+
+                        Utilities.StartThread(delegate
+                        {
+                            var syn_ack_msg = new Message(MessageType.Control, UdpSession.SYN_ACK);
+                            syn_ack_msg.Store["capabilities"] = new byte[] { (byte)UdpCapabilities.L7Fragmentation };
+
+                            session.Send(syn_ack_msg.Serialize());
+
+                            var ack_msg = session.ReceiveMessage(UdpSession.HANDSHAKE_TIMEOUT);
+
+                            if (ack_msg == null || ack_msg.Type != MessageType.Control || ack_msg.Subtype != UdpSession.ACK)
+                            {
+                                Log.Info("Ignored improper connection attempt with message {0}/0x{1:X2}", ack_msg?.Type, ack_msg?.Subtype);
+                                Sessions.Remove(tuple);
+                                return;
+                            }
+
+                            if(ack_msg.Store.ContainsKey("capabilities"))
+                            {
+                                session.L7FragmentationCapable = ack_msg.Store["capabilities"].Contains((byte)UdpCapabilities.L7Fragmentation);
+                            }
+
+                            Log.Info("Accepted UDP connection on {0}{1}", receive_ep, QueueConnections ? ", queueing session" : "");
+                            
+                            if (session.L7FragmentationCapable)
+                            {
+                                Log.Info("Negotiating MTU...");
+                                session.NegotiateMTU();
+                            }
+
+                            if (QueueConnections)
+                                Queue.Add(new UdpTunnel(session));
+                        });
                     }
+                }
+                catch (SocketException ex)
+                {
+                    Log.Error(ex);
                 }
                 catch (Exception ex)
                 {
@@ -141,6 +219,11 @@ namespace Bifrost.Udp
         {
             return ((IPEndPoint)Socket.Client.LocalEndPoint).ToString();
         }
+    }
+
+    enum UdpCapabilities
+    {
+        L7Fragmentation = 0x01
     }
 
     public class StructuralEqualityComparer<T> : IEqualityComparer<T>

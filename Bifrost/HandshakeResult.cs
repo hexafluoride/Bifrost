@@ -48,6 +48,8 @@ namespace Bifrost
         UntrustedStaticPublicKey,
         UntrustedTimestamp,
         UntrustedEphemeralPublicKey,
-        UnexpectedMessage
+        UnexpectedMessage,
+        NoCipherSuite,
+        InvalidCipherSuite
     }
 }

@@ -5,9 +5,9 @@ using System.Runtime.CompilerServices;
 // Change them to the values specific to your project.
 
 [assembly: AssemblyTitle("Bifrost")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("A lightweight cryptographic network protocol")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("hexafluoride")]
 [assembly: AssemblyProduct("")]
 [assembly: AssemblyCopyright("hexafluoride")]
 [assembly: AssemblyTrademark("")]

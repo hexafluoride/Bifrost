@@ -1,91 +1,24 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{DCC40958-78E2-4A21-B8C8-B2911BC357A4}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <RootNamespace>Bifrost</RootNamespace>
-    <AssemblyName>Bifrost</AssemblyName>
-    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG;</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <ConsolePause>false</ConsolePause>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>full</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release</OutputPath>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <ConsolePause>false</ConsolePause>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System" />
-    <Reference Include="BouncyCastle.Crypto">
-      <HintPath>..\packages\BouncyCastle.1.8.1\lib\BouncyCastle.Crypto.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="NLog">
-      <HintPath>..\packages\NLog.4.3.3\lib\net45\NLog.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Capability.cs" />
-    <Compile Include="CipherSuite.cs" />
-    <Compile Include="Ciphers\AesCbcCipher.cs" />
-    <Compile Include="Ciphers\AesGcmCipher.cs" />
-    <Compile Include="Ciphers\ChaChaCipher.cs" />
-    <Compile Include="Ciphers\ICipher.cs" />
-    <Compile Include="Ciphers\IdentityCipher.cs" />
-    <Compile Include="HandshakeResult.cs" />
-    <Compile Include="HttpListener.cs" />
-    <Compile Include="IListener.cs" />
-    <Compile Include="KeyExchanges\EcdhKeyExchange.cs" />
-    <Compile Include="KeyExchanges\IKeyExchange.cs" />
-    <Compile Include="MACs\HMAC.cs" />
-    <Compile Include="MACs\IdentityMAC.cs" />
-    <Compile Include="MACs\IMAC.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Extensions.cs" />
-    <Compile Include="Message.cs" />
-    <Compile Include="EncryptedLink.cs" />
-    <Compile Include="HttpTunnel.cs" />
-    <Compile Include="MessageHelpers.cs" />
-    <Compile Include="ServerLink.cs" />
-    <Compile Include="ClientLink.cs" />
-    <Compile Include="TcpTunnel.cs" />
-    <Compile Include="Udp\UdpListener.cs" />
-    <Compile Include="Udp\UdpSession.cs" />
-    <Compile Include="Udp\UdpTunnel.cs" />
-    <Compile Include="Utilities.cs" />
-    <Compile Include="RsaHelpers.cs" />
-    <Compile Include="SizeQueue.cs" />
-    <Compile Include="ITunnel.cs" />
-    <Compile Include="WebSocketListener.cs" />
-    <Compile Include="WebSocketTunnel.cs" />
-    <Compile Include="WebSockets\ClientConnection.cs" />
-    <Compile Include="WebSockets\ServerConnection.cs" />
-    <Compile Include="WebSockets\WebSocketConnection.cs" />
-    <Compile Include="WebSockets\WebSocketMessage.cs" />
-  </ItemGroup>
-  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <ItemGroup>
-    <None Include="packages.config" />
-    <None Include="NLog.xsd" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="NLog.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFrameworks>netstandard2.0;net452</TargetFrameworks>
+        <Authors>hexafluoride</Authors>
+        <Company />
+        <Product />
+        <Description>A lightweight cryptographic network protocol</Description>
+        <Copyright>hexafluoride</Copyright>
+        <PackageLicenseUrl>https://github.com/hexafluoride/Bifrost/blob/master/LICENSE</PackageLicenseUrl>
+        <PackageProjectUrl>https://github.com/hexafluoride/Bifrost</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/hexafluoride/Bifrost</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>cryptography, networking, network, csharp</PackageTags>
+        <PackageId>Hexafluoride.Bifrost</PackageId>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="NLog" Version="4.5.11" />
+        <PackageReference Include="BouncyCastle.NetCoreSdk" Version="1.9.0" />
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Properties\" />
+    </ItemGroup>
 </Project>

@@ -25,6 +25,7 @@ using Bifrost.MACs;
 
 namespace Bifrost
 {
+    public delegate void MessageReceived(EncryptedLink link, Message msg);
     public delegate void DataReceived(EncryptedLink link, byte[] data);
     public delegate void LinkClosed(EncryptedLink link);
 
@@ -54,6 +55,8 @@ namespace Bifrost
         
         public SHA256CryptoServiceProvider SHA = new SHA256CryptoServiceProvider();
 
+        // TODO: Go from "event X OnX" to "event OnX X"
+        public event MessageReceived OnMessageReceived;
         public event DataReceived OnDataReceived;
         public event LinkClosed OnLinkClosed;
 
@@ -200,6 +203,8 @@ namespace Bifrost
                     Log.Trace("Null message, continuing");
                     continue;
                 }
+
+                OnMessageReceived?.Invoke(this, msg);
                 
                 if (msg.Type == MessageType.Data)
                 {

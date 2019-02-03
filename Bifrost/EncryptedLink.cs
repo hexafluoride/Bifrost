@@ -101,13 +101,23 @@ namespace Bifrost
         /// <param name="sign_path">The file that contains our signature.</param>
         public void LoadCertificatesFromFiles(string ca_path, string key_path, string sign_path)
         {
-            CertificateAuthority = (RsaKeyParameters)RsaHelpers.PemDeserialize(File.ReadAllText(ca_path));
-            Log.Debug("Loaded certificate authority from {0}", ca_path);
-            Certificate = (AsymmetricCipherKeyPair)RsaHelpers.PemDeserialize(File.ReadAllText(key_path));
-            Log.Debug("Loaded certificate from {0}", key_path);
+            if (File.Exists(ca_path))
+            {
+                CertificateAuthority = (RsaKeyParameters)RsaHelpers.PemDeserialize(File.ReadAllText(ca_path));
+                Log.Debug("Loaded certificate authority from {0}", ca_path);
+            }
 
-            Signature = File.ReadAllBytes(sign_path);
-            Log.Debug("Loaded signature from {0}", sign_path);
+            if (File.Exists(key_path))
+            {
+                Certificate = (AsymmetricCipherKeyPair)RsaHelpers.PemDeserialize(File.ReadAllText(key_path));
+                Log.Debug("Loaded certificate from {0}", key_path);
+            }
+
+            if (File.Exists(sign_path))
+            {
+                Signature = File.ReadAllBytes(sign_path);
+                Log.Debug("Loaded signature from {0}", sign_path);
+            }
         }        
 
         /// <summary>

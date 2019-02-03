@@ -179,22 +179,28 @@ namespace Bifrost
 
             Log.Info("Clock drift between peers is {0}.", difference);
 
-            if (!AuthenticateClient && !RsaHelpers.VerifyData(rsa_public_key, rsa_signature, CertificateAuthority))
+            if (AuthenticateClient)
             {
-                var result = new HandshakeResult(HandshakeResultType.UntrustedStaticPublicKey, "Failed to verify RSA public key against certificate authority. Terminating handshake.");
-                Log.Error(result.Message);
-                Tunnel.Close();
-                return result;
+                if (!RsaHelpers.VerifyData(rsa_public_key, rsa_signature, CertificateAuthority))
+                {
+                    var result = new HandshakeResult(HandshakeResultType.UntrustedStaticPublicKey, "Failed to verify RSA public key against certificate authority. Terminating handshake.");
+                    Log.Error(result.Message);
+                    Tunnel.Close();
+                    return result;
+                }
             }
 
             var parameters = (RsaKeyParameters)RsaHelpers.PemDeserialize(Encoding.UTF8.GetString(rsa_public_key));
 
-            if (AuthenticateClient && !RsaHelpers.VerifyData(ecdh_public_key, ecdh_signature, parameters))
+            if (AuthenticateClient)
             {
-                var result = new HandshakeResult(HandshakeResultType.UntrustedEphemeralPublicKey, "Failed to verify ECDH public key authenticity. Terminating handshake.");
-                Log.Error(result.Message);
-                Tunnel.Close();
-                return result;
+                if (!RsaHelpers.VerifyData(ecdh_public_key, ecdh_signature, parameters))
+                {
+                    var result = new HandshakeResult(HandshakeResultType.UntrustedEphemeralPublicKey, "Failed to verify ECDH public key authenticity. Terminating handshake.");
+                    Log.Error(result.Message);
+                    Tunnel.Close();
+                    return result;
+                }
             }
 
             Suite.SharedSalt = new byte[16];
